@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="A tiny reverse-DNS terminal hosted under an ip6.arpa zone."
+    >
+    <title>www.0.1.5.c.4.5.9.0.a.2.ip6.arpa</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="terminal-shell" aria-label="Reverse DNS terminal">
+      <section class="terminal-window" aria-label="Fake terminal">
+        <div id="terminal" class="terminal" role="log" aria-live="polite"></div>
+
+        <form id="command-form" class="command-line is-booting" autocomplete="off">
+          <label class="prompt" for="command-input">guest@www.0.1.5.c.4.5.9.0.a.2.ip6.arpa:~$</label>
+          <span class="input-wrap">
+            <input
+              id="command-input"
+              name="command"
+              type="text"
+              spellcheck="false"
+              autocapitalize="off"
+              autocomplete="off"
+              aria-label="Terminal command"
+              autofocus
+              disabled
+            >
+            <span id="block-cursor" class="block-cursor" aria-hidden="true"></span>
+          </span>
+        </form>
+      </section>
+    </main>
+
+    <script src="terminal.js"></script>
+  </body>
+</html>
