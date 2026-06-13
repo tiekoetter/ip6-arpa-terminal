@@ -10,6 +10,7 @@ It opens as a fake bash-like terminal with a reverse-DNS MOTD and a few predefin
 - `dig`
 - `tls`
 - `https`
+- `contact`
 - `host`
 - `ls`
 - `pwd`

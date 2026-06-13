@@ -1,5 +1,6 @@
 const zone = "0.1.5.c.4.5.9.0.a.2.ip6.arpa";
 const host = `www.${zone}`;
+const contactEmail = "leon@tiekoetter.com";
 const aRecords = ["152.53.125.158"];
 const aaaaRecords = ["2a09:54c5:1010:443::1", "2a14:7c0:4bfc:443::1"];
 const txtRecord = "yes, this is a website in ip6.arpa";
@@ -68,6 +69,7 @@ const commands = {
       "  dig       Show configured DNS records",
       "  tls       Explain the HTTPS situation",
       "  https     Alias for tls",
+      "  contact   Print contact details",
       "  host      Print the current hostname",
       "  ls        List this tiny filesystem",
       "  cat FILE  Print one of the listed files",
@@ -160,12 +162,22 @@ const commands = {
       "Mainstream public CAs do not currently issue ordinary browser-trusted",
       "certificates for .arpa names.",
       "",
-      "If you know a CA that does, or you are such a CA, please email me.",
+      `If you know a CA that does, or you are such a CA, email ${contactEmail}.`,
     ].join("\n");
   },
 
   https() {
     return commands.tls();
+  },
+
+  contact() {
+    return [
+      "Contact:",
+      `  ${contactEmail}`,
+      "",
+      "Especially welcome: notes from anyone who knows a browser-trusted CA",
+      "that will issue for .arpa names, or from such a CA directly.",
+    ].join("\n");
   },
 
   host() {
