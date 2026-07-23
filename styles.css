@@ -70,6 +70,44 @@ body {
   white-space: pre-wrap;
 }
 
+.motd-output {
+  margin: 0 0 12px;
+}
+
+.terminal .motd-output pre {
+  margin: 0;
+}
+
+.terminal .motd-box {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.terminal .motd-output .motd-footer {
+  margin-top: 12px;
+  overflow-wrap: anywhere;
+}
+
+.terminal a {
+  color: inherit;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.terminal a:hover,
+.terminal a:focus-visible {
+  color: #fff;
+}
+
+.noscript-message {
+  max-width: 52ch;
+}
+
+.no-js .command-line {
+  display: none;
+}
+
 .terminal pre.boot-line {
   margin-bottom: 2px;
 }
@@ -178,6 +216,12 @@ body {
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .block-cursor {
+    animation: none;
+  }
+}
+
 @media (max-width: 640px) {
   .terminal-shell {
     padding: 0;
@@ -185,7 +229,9 @@ body {
 
   .terminal-window {
     min-height: 100vh;
+    min-height: 100dvh;
     height: 100vh;
+    height: 100dvh;
     border: 0;
     border-radius: 0;
   }
@@ -193,6 +239,10 @@ body {
   .terminal {
     padding: 14px;
     font-size: 0.9rem;
+  }
+
+  .motd-box {
+    font-size: clamp(0.6rem, 2.6vw, 0.9rem);
   }
 
   .command-line {

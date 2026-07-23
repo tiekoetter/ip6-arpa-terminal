@@ -13,8 +13,10 @@ It opens as a fake bash-like terminal with a reverse-DNS MOTD and a few predefin
 - `contact`
 - `host`
 - `ls`
+- `cat FILE`
 - `pwd`
 - `whoami`
+- `sudo ...`
 - `motd`
 - `date`
 - `clear`

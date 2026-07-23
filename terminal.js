@@ -1,8 +1,26 @@
+document.documentElement.classList.replace("no-js", "js");
+
 const zone = "0.1.5.c.4.5.9.0.a.2.ip6.arpa";
 const host = `www.${zone}`;
 const contactEmail = "leon@tiekoetter.com";
+const motdContactEmail = `root@${zone}`;
+const asPageUrl = "https://as208694.net/";
+const impressumUrl = "https://www.tiekoetter.com/impressum/";
+const linkedTextTargets = new Map([
+  [asPageUrl, asPageUrl],
+  [impressumUrl, impressumUrl],
+  [motdContactEmail, `mailto:${motdContactEmail}`],
+]);
+const linkedTextPattern = new RegExp(
+  `(${[...linkedTextTargets.keys()].map(escapeRegExp).join("|")})`,
+  "g",
+);
 const aRecords = ["152.53.125.158"];
 const aaaaRecords = ["2a09:54c5:1010:443::1", "2a14:7c0:4bfc:443::1"];
+const mxRecords = [{ priority: 1, exchange: "luna.sys.tiekoetter.net." }];
+const mxRecordLines = mxRecords.map(
+  ({ priority, exchange }) => `${priority} ${exchange}`,
+);
 const txtRecord = "yes, this is a website in ip6.arpa";
 const nsRecords = [
   "ns1.tiekoetter.net.",
@@ -39,17 +57,25 @@ const bootLines = [
   `AAAA records found: ${aaaaRecords.join(", ")}`,
   "HTTP endpoint reachable ............ ok",
   "loading terminal interface ......... ok",
-  `connected as guest@${host}`,
+  `connected as guest@${zone}`,
   "",
 ];
 
-const motd = formatBox([
+const motdBox = formatBox([
   { text: "RDNS TERMINAL", align: "center" },
   "",
   `Website: ${host}`,
   `Zone:    ${zone}`,
   `TXT:     "${txtRecord}"`,
 ]);
+const motdFooter = [
+  `AS208694: ${asPageUrl}`,
+  `Impressum: ${impressumUrl}`,
+  `System administrator: ${motdContactEmail}`,
+  "",
+  'Type "help" for available commands.',
+].join("\n");
+const motd = `${motdBox}\n\n${motdFooter}`;
 
 const fileContents = {
   "motd.txt": () => motd,
@@ -75,6 +101,7 @@ const commands = {
       "  cat FILE  Print one of the listed files",
       "  pwd       Print working directory",
       "  whoami    Print current user",
+      "  sudo ...  Attempt to run a command as root",
       "  motd      Print the banner again",
       "  date      Print local browser time",
       "  clear     Clear the terminal",
@@ -88,10 +115,10 @@ const commands = {
       `host: ${host}`,
       `soa:  ${soaRecord.mname} ${soaRecord.rname} ${soaRecord.serial}`,
       `ns:   ${nsRecords.join(" ")}`,
+      `mx:   ${mxRecordLines.join(" ")}`,
       `txt:  "${txtRecord}"`,
       "",
       "This name lives under ip6.arpa, the namespace used for IPv6 reverse DNS.",
-      "It is also pointed at a tiny plain-HTTP website, because DNS names can have hobbies.",
     ].join("\n");
   },
 
@@ -134,6 +161,9 @@ const commands = {
       "",
       `$ dig +short NS ${zone}`,
       ...nsRecords,
+      "",
+      `$ dig +short MX ${zone}`,
+      ...mxRecordLines,
       "",
       `$ dig +short SOA ${zone}`,
       [
@@ -195,7 +225,7 @@ const commands = {
 
     return args
       .map((fileName) => {
-        if (!fileContents[fileName]) {
+        if (!Object.hasOwn(fileContents, fileName)) {
           return `cat: ${fileName}: No such file`;
         }
 
@@ -210,6 +240,13 @@ const commands = {
 
   whoami() {
     return "guest";
+  },
+
+  sudo() {
+    return [
+      "guest is not in the sudoers file. This incident will be reported.",
+      `${motdContactEmail} was contacted.`,
+    ].join("\n");
   },
 
   date() {
@@ -246,21 +283,70 @@ function formatBox(lines) {
     return `| ${" ".repeat(leftPadding)}${text}${" ".repeat(rightPadding)} |`;
   });
 
-  return `${border}\n${body.join("\n")}\n${border}\n\nType "help" for available commands.`;
+  return [border, ...body, border].join("\n");
 }
 
 function appendBlock(text, className = "") {
   if (!text) return;
 
+  if (text === motd) {
+    appendMotd(className);
+    return;
+  }
+
   const block = document.createElement("pre");
   if (className) block.className = className;
-  block.textContent = text;
+
+  appendLinkedText(block, text);
   terminal.append(block);
+  scrollTerminalToBottom();
+}
+
+function appendMotd(className = "") {
+  const wrapper = document.createElement("div");
+  wrapper.className = ["motd-output", className].filter(Boolean).join(" ");
+
+  const box = document.createElement("pre");
+  box.className = "motd-box";
+  box.textContent = motdBox;
+
+  const footer = document.createElement("pre");
+  footer.className = "motd-footer";
+  appendLinkedText(footer, motdFooter);
+
+  wrapper.append(box, footer);
+  terminal.append(wrapper);
+  scrollTerminalToBottom();
+}
+
+function appendLinkedText(element, text) {
+  for (const part of text.split(linkedTextPattern)) {
+    if (linkedTextTargets.has(part)) {
+      const target = linkedTextTargets.get(part);
+      const link = document.createElement("a");
+      link.href = target;
+      link.textContent = part;
+      if (target.startsWith("http")) {
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+      }
+      element.append(link);
+    } else {
+      element.append(document.createTextNode(part));
+    }
+  }
+}
+
+function scrollTerminalToBottom() {
   terminal.scrollTop = terminal.scrollHeight;
 }
 
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function appendPrompt(command) {
-  appendBlock(`guest@${host}:~$ ${command}`, "output-command");
+  appendBlock(`guest@${zone}:~$ ${command}`, "output-command");
 }
 
 function runCommand(rawCommand) {
@@ -277,7 +363,7 @@ function runCommand(rawCommand) {
     return;
   }
 
-  if (commands[command]) {
+  if (Object.hasOwn(commands, command)) {
     appendBlock(commands[command](args));
     return;
   }
@@ -348,6 +434,7 @@ bootTerminal();
 async function bootTerminal() {
   isBooting = true;
   skipBootRequested = false;
+  terminal.setAttribute("aria-live", "off");
   form.classList.add("is-booting");
   input.disabled = true;
 
@@ -368,6 +455,7 @@ async function bootTerminal() {
   appendBlock(motd, "output-success");
 
   isBooting = false;
+  terminal.setAttribute("aria-live", "polite");
   input.disabled = false;
   form.classList.remove("is-booting");
   input.focus();
