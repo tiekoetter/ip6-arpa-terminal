@@ -1,8 +1,9 @@
 # ip6-arpa-terminal
 
-A tiny static easter egg for `www.0.1.5.c.4.5.9.0.a.2.ip6.arpa`.
+A tiny static Easter egg at `www.0.1.5.c.4.5.9.0.a.2.ip6.arpa`.
 
-It opens as a fake bash-like terminal with a reverse-DNS MOTD and a few predefined commands:
+The page presents a simulated Bash terminal with a reverse DNS MOTD and a few
+predefined commands:
 
 - `help`
 - `zone`
@@ -24,7 +25,8 @@ It opens as a fake bash-like terminal with a reverse-DNS MOTD and a few predefin
 
 ## Hosting
 
-Serve the repository root from your webserver and point DNS for:
+Serve the repository root with a web server, then create DNS records that point
+the following name to it:
 
 ```text
 www.0.1.5.c.4.5.9.0.a.2.ip6.arpa
@@ -38,4 +40,6 @@ Suggested TXT record for the `www` name:
 www.0.1.5.c.4.5.9.0.a.2.ip6.arpa. 3600 IN TXT "yes, this is a website in ip6.arpa"
 ```
 
-This site is intentionally plain HTTP. Current mainstream public CAs do not issue ordinary browser-trusted certificates for `.arpa` names, so do not configure automatic HTTPS redirects for this vhost unless you are using a private trust setup.
+This site deliberately uses plain HTTP. Public CAs do not currently issue
+certificates for `.arpa` names that mainstream browsers trust. Unless you use a
+private trust setup, disable automatic HTTPS redirects for this virtual host.

@@ -2,6 +2,7 @@ document.documentElement.classList.replace("no-js", "js");
 
 const zone = "0.1.5.c.4.5.9.0.a.2.ip6.arpa";
 const host = `www.${zone}`;
+const contactName = "Léon Tiekötter";
 const contactEmail = "leon@tiekoetter.com";
 const motdContactEmail = `root@${zone}`;
 const asPageUrl = "https://as208694.net/";
@@ -9,6 +10,7 @@ const impressumUrl = "https://www.tiekoetter.com/impressum/";
 const linkedTextTargets = new Map([
   [asPageUrl, asPageUrl],
   [impressumUrl, impressumUrl],
+  [contactEmail, `mailto:${contactEmail}`],
   [motdContactEmail, `mailto:${motdContactEmail}`],
 ]);
 const linkedTextPattern = new RegExp(
@@ -70,7 +72,7 @@ const motdBox = formatBox([
 ]);
 const motdFooter = [
   `AS208694: ${asPageUrl}`,
-  `Impressum: ${impressumUrl}`,
+  `Legal notice: ${impressumUrl}`,
   `System administrator: ${motdContactEmail}`,
   "",
   'Type "help" for available commands.',
@@ -103,7 +105,7 @@ const commands = {
       "  whoami    Print current user",
       "  sudo ...  Attempt to run a command as root",
       "  motd      Print the banner again",
-      "  date      Print local browser time",
+      "  date      Print the browser's local time",
       "  clear     Clear the terminal",
       "  echo ...  Echo text back",
     ].join("\n");
@@ -118,7 +120,7 @@ const commands = {
       `mx:   ${mxRecordLines.join(" ")}`,
       `txt:  "${txtRecord}"`,
       "",
-      "This name lives under ip6.arpa, the namespace used for IPv6 reverse DNS.",
+      "This name is under ip6.arpa, the namespace for IPv6 reverse DNS.",
     ].join("\n");
   },
 
@@ -187,12 +189,12 @@ const commands = {
 
   tls() {
     return [
-      "This host is intentionally available over plain HTTP.",
+      "This host deliberately uses plain HTTP.",
       "",
-      "Mainstream public CAs do not currently issue ordinary browser-trusted",
-      "certificates for .arpa names.",
+      "Public CAs do not currently issue certificates for .arpa names that",
+      "mainstream browsers trust.",
       "",
-      `If you know a CA that does, or you are such a CA, email ${contactEmail}.`,
+      `If you know of a CA that does, or represent one, email ${contactEmail}.`,
     ].join("\n");
   },
 
@@ -203,10 +205,12 @@ const commands = {
   contact() {
     return [
       "Contact:",
+      `  ${contactName}`,
       `  ${contactEmail}`,
       "",
-      "Especially welcome: notes from anyone who knows a browser-trusted CA",
-      "that will issue for .arpa names, or from such a CA directly.",
+      "Especially welcome: information about a public CA that issues",
+      "browser-trusted certificates for .arpa names, including messages from",
+      "the CA itself.",
     ].join("\n");
   },
 
@@ -369,7 +373,7 @@ function runCommand(rawCommand) {
   }
 
   appendBlock(
-    `${name}: command not found\nTry "help" for the list of known commands.`,
+    `${name}: command not found\nTry "help" for a list of available commands.`,
     "output-error",
   );
 }
