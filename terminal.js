@@ -528,7 +528,7 @@ function formatFetchOutput() {
     `Host:     ${host}`,
     `Zone:     ${zone}`,
     `Prefix:   ${ipv6Prefix}`,
-    "ASN:      AS208694",
+    "ASN:      208694",
     `IPv4:     ${aRecords.join(", ")}`,
     `IPv6:     ${aaaaRecords[0]}`,
     `          ${aaaaRecords[1]}`,
