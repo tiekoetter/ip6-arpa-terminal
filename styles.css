@@ -70,6 +70,14 @@ body {
   white-space: pre-wrap;
 }
 
+.terminal pre.fetch-output {
+  max-width: 100%;
+  overflow-x: auto;
+  font-size: 0.78rem;
+  line-height: 1.15;
+  white-space: pre;
+}
+
 .motd-output {
   margin: 0 0 12px;
 }
@@ -243,6 +251,10 @@ body {
 
   .motd-box {
     font-size: clamp(0.6rem, 2.6vw, 0.9rem);
+  }
+
+  .terminal pre.fetch-output {
+    font-size: 0.65rem;
   }
 
   .command-line {

@@ -1,6 +1,13 @@
 document.documentElement.classList.replace("no-js", "js");
 
 const zone = "0.1.5.c.4.5.9.0.a.2.ip6.arpa";
+const ipv6PrefixNibbles = [
+  ...zone.slice(0, -".ip6.arpa".length).split("."),
+].reverse();
+const ipv6PrefixAddress = formatIpv6Address(
+  ipv6PrefixNibbles.join("").padEnd(32, "0"),
+);
+const ipv6Prefix = `${ipv6PrefixAddress}/${ipv6PrefixNibbles.length * 4}`;
 const host = `www.${zone}`;
 const contactName = "Léon Tiekötter";
 const contactEmail = "leon@tiekoetter.com";
@@ -30,6 +37,16 @@ const nsRecords = [
   "ns3.tiekoetter.net.",
   "ns4.tiekoetter.net.",
 ];
+const fetchLogoLines = [
+  `${" ".repeat(1)}${"@".repeat(29)}`,
+  `${" ".repeat(1)}${"@".repeat(29)}`,
+  ...Array(2).fill(
+    `${" ".repeat(1)}@@${" ".repeat(10)}@@@@@${" ".repeat(10)}@@`,
+  ),
+  ...Array(9).fill(`${" ".repeat(13)}@@@@@`),
+  `${" ".repeat(12)}@@@@@@@`,
+  `${" ".repeat(9)}@@@@@@@@@@@@@`,
+];
 const soaRecord = {
   mname: "ns1.tiekoetter.net.",
   rname: "dns.tiekoetter.net.",
@@ -52,6 +69,7 @@ const history = [];
 let historyIndex = 0;
 let isBooting = false;
 let skipBootRequested = false;
+let bootStartedAt = performance.now();
 
 const bootLines = [
   `querying ${host}`,
@@ -95,9 +113,12 @@ const commands = {
       "  zone      Print the reverse DNS zone",
       "  whois     Show public allocation details",
       "  dig       Show configured DNS records",
+      "  decode ... Decode an IPv4 or IPv6 reverse DNS name",
+      "  arpa ADDR Convert an IP address to its reverse DNS name",
       "  tls       Explain the HTTPS situation",
       "  https     Alias for tls",
       "  contact   Print contact details",
+      "  fetch     Show system information",
       "  host      Print the current hostname",
       "  ls        List this tiny filesystem",
       "  cat FILE  Print one of the listed files",
@@ -106,6 +127,9 @@ const commands = {
       "  sudo ...  Attempt to run a command as root",
       "  motd      Print the banner again",
       "  date      Print the browser's local time",
+      "  uptime    Show the time since the last boot",
+      "  history   Show command history",
+      "  reboot    Restart the terminal",
       "  clear     Clear the terminal",
       "  echo ...  Echo text back",
     ].join("\n");
@@ -183,6 +207,45 @@ const commands = {
     ].join("\n");
   },
 
+  decode(args) {
+    if (args.length > 1) {
+      return "decode: too many arguments\nUsage: decode [NAME]";
+    }
+
+    const name = args[0] ?? zone;
+    const decoded = decodeReverseDnsName(name);
+    if (!decoded) {
+      return `decode: ${name}: Invalid or unsupported reverse DNS name`;
+    }
+
+    return [
+      `name:    ${decoded.name}`,
+      `reverse: ${decoded.components.join(" ")}`,
+      `prefix:  ${decoded.prefix}`,
+      "",
+      `${decoded.namespace} stores ${decoded.addressFamily} addresses one ` +
+        `${decoded.unit} at a time,`,
+      "in reverse order.",
+    ].join("\n");
+  },
+
+  arpa(args) {
+    if (!args.length) {
+      return "arpa: missing IP address\nUsage: arpa ADDR";
+    }
+
+    if (args.length > 1) {
+      return "arpa: too many arguments\nUsage: arpa ADDR";
+    }
+
+    const arpaName = addressToArpa(args[0]);
+    if (!arpaName) {
+      return `arpa: ${args[0]}: Invalid IP address`;
+    }
+
+    return arpaName;
+  },
+
   motd() {
     return motd;
   },
@@ -212,6 +275,10 @@ const commands = {
       "browser-trusted certificates for .arpa names, including messages from",
       "the CA itself.",
     ].join("\n");
+  },
+
+  fetch() {
+    return formatFetchOutput();
   },
 
   host() {
@@ -260,11 +327,228 @@ const commands = {
     }).format(new Date());
   },
 
+  uptime() {
+    return `up ${formatDuration(performance.now() - bootStartedAt)}`;
+  },
+
+  history() {
+    const width = String(history.length).length;
+    return history
+      .map(
+        (command, index) =>
+          `${String(index + 1).padStart(width, " ")}  ${command}`,
+      )
+      .join("\n");
+  },
+
+  reboot() {
+    history.length = 0;
+    historyIndex = 0;
+    terminal.replaceChildren();
+    bootTerminal();
+    return "";
+  },
+
   clear() {
     terminal.replaceChildren();
     return "";
   },
 };
+
+function addressToArpa(address) {
+  const ipv4Octets = parseIpv4Address(address.trim());
+  if (ipv4Octets) {
+    return `${[...ipv4Octets].reverse().join(".")}.in-addr.arpa.`;
+  }
+
+  return ipv6ToArpa(address);
+}
+
+function ipv6ToArpa(address) {
+  const expandedAddress = expandIpv6Address(address);
+  if (!expandedAddress) return null;
+
+  return `${[...expandedAddress].reverse().join(".")}.ip6.arpa.`;
+}
+
+function expandIpv6Address(input) {
+  let address = input.trim().toLowerCase();
+  if (!address || address.includes("%") || address.includes("/")) return null;
+
+  if (address.includes(".")) {
+    const lastColon = address.lastIndexOf(":");
+    if (lastColon === -1) return null;
+
+    const octets = parseIpv4Address(address.slice(lastColon + 1));
+    if (!octets) return null;
+
+    const high = (octets[0] << 8) | octets[1];
+    const low = (octets[2] << 8) | octets[3];
+    address = `${address.slice(0, lastColon + 1)}${high.toString(16)}:${low.toString(16)}`;
+  }
+
+  const halves = address.split("::");
+  if (halves.length > 2) return null;
+
+  const left = halves[0] ? halves[0].split(":") : [];
+  const right = halves.length === 2 && halves[1] ? halves[1].split(":") : [];
+  const groups = [...left, ...right];
+
+  if (groups.some((group) => !/^[0-9a-f]{1,4}$/.test(group))) return null;
+
+  if (halves.length === 1) {
+    if (groups.length !== 8) return null;
+    return groups.map((group) => group.padStart(4, "0")).join("");
+  }
+
+  const missingGroups = 8 - groups.length;
+  if (missingGroups < 1) return null;
+
+  return [...left, ...Array(missingGroups).fill("0"), ...right]
+    .map((group) => group.padStart(4, "0"))
+    .join("");
+}
+
+function parseIpv4Address(address) {
+  const octets = address.split(".");
+  if (octets.length !== 4 || octets.some((octet) => !isValidIpv4Octet(octet))) {
+    return null;
+  }
+
+  return octets.map(Number);
+}
+
+function isValidIpv4Octet(octet) {
+  return /^(0|[1-9]\d{0,2})$/.test(octet) && Number(octet) <= 255;
+}
+
+function decodeReverseDnsName(input) {
+  const name = input.trim().toLowerCase().replace(/\.$/, "");
+
+  if (name.endsWith(".ip6.arpa")) {
+    const labels = name.slice(0, -".ip6.arpa".length).split(".");
+    if (
+      labels.length > 32 ||
+      labels.some((label) => !/^[0-9a-f]$/.test(label))
+    ) {
+      return null;
+    }
+
+    const components = [...labels].reverse();
+    const address = formatIpv6Address(components.join("").padEnd(32, "0"));
+    return {
+      name,
+      components,
+      prefix: `${address}/${components.length * 4}`,
+      namespace: "ip6.arpa",
+      addressFamily: "IPv6",
+      unit: "hexadecimal nibble",
+    };
+  }
+
+  if (name.endsWith(".in-addr.arpa")) {
+    const labels = name.slice(0, -".in-addr.arpa".length).split(".");
+    if (
+      labels.length > 4 ||
+      labels.some((label) => !isValidIpv4Octet(label))
+    ) {
+      return null;
+    }
+
+    const components = [...labels].reverse();
+    const address = [...components, ...Array(4 - components.length).fill("0")]
+      .join(".");
+    return {
+      name,
+      components,
+      prefix: `${address}/${components.length * 8}`,
+      namespace: "in-addr.arpa",
+      addressFamily: "IPv4",
+      unit: "octet",
+    };
+  }
+
+  return null;
+}
+
+function formatIpv6Address(expandedAddress) {
+  const groups = expandedAddress
+    .match(/.{4}/g)
+    .map((group) => Number.parseInt(group, 16).toString(16));
+  let longestStart = -1;
+  let longestLength = 0;
+
+  for (let start = 0; start < groups.length; start += 1) {
+    if (groups[start] !== "0") continue;
+
+    let end = start;
+    while (end < groups.length && groups[end] === "0") end += 1;
+
+    if (end - start > longestLength) {
+      longestStart = start;
+      longestLength = end - start;
+    }
+
+    start = end - 1;
+  }
+
+  if (longestLength < 2) return groups.join(":");
+
+  const before = groups.slice(0, longestStart).join(":");
+  const after = groups.slice(longestStart + longestLength).join(":");
+  return `${before}::${after}`;
+}
+
+function formatDuration(milliseconds) {
+  let remainingSeconds = Math.floor(milliseconds / 1000);
+  const units = [
+    ["day", 86400],
+    ["hour", 3600],
+    ["minute", 60],
+    ["second", 1],
+  ];
+  const parts = [];
+
+  for (const [name, seconds] of units) {
+    const value = Math.floor(remainingSeconds / seconds);
+    if (!value && (name !== "second" || parts.length)) continue;
+
+    parts.push(`${value} ${name}${value === 1 ? "" : "s"}`);
+    remainingSeconds %= seconds;
+  }
+
+  return parts.join(", ");
+}
+
+function formatFetchOutput() {
+  const title = `guest@${zone}`;
+  const details = [
+    title,
+    "-".repeat(title.length),
+    `Host:     ${host}`,
+    `Zone:     ${zone}`,
+    `Prefix:   ${ipv6Prefix}`,
+    "ASN:      AS208694",
+    `IPv4:     ${aRecords.join(", ")}`,
+    `IPv6:     ${aaaaRecords[0]}`,
+    `          ${aaaaRecords[1]}`,
+    "Shell:    bash (simulated)",
+    "Terminal: ip6-arpa-terminal",
+    `Uptime:   ${formatDuration(performance.now() - bootStartedAt)}`,
+  ];
+
+  if (window.matchMedia("(max-width: 640px)").matches) {
+    return [...fetchLogoLines, "", ...details].join("\n");
+  }
+
+  const logoWidth = Math.max(...fetchLogoLines.map((line) => line.length));
+  return fetchLogoLines
+    .map((line, index) => {
+      const detail = details[index] ?? "";
+      return detail ? `${line.padEnd(logoWidth, " ")}    ${detail}` : line;
+    })
+    .join("\n");
+}
 
 function formatBox(lines) {
   const normalizedLines = lines.map((line) => {
@@ -368,7 +652,7 @@ function runCommand(rawCommand) {
   }
 
   if (Object.hasOwn(commands, command)) {
-    appendBlock(commands[command](args));
+    appendBlock(commands[command](args), command === "fetch" ? "fetch-output" : "");
     return;
   }
 
@@ -436,6 +720,7 @@ document.addEventListener("keydown", (event) => {
 bootTerminal();
 
 async function bootTerminal() {
+  bootStartedAt = performance.now();
   isBooting = true;
   skipBootRequested = false;
   terminal.setAttribute("aria-live", "off");
