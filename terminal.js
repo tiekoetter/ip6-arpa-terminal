@@ -58,6 +58,7 @@ const soaRecord = {
 };
 
 const terminal = document.querySelector("#terminal");
+const initialMotd = document.querySelector("#initial-motd");
 const form = document.querySelector("#command-form");
 const input = document.querySelector("#command-input");
 const cursor = document.querySelector("#block-cursor");
@@ -89,6 +90,9 @@ const motdBox = formatBox([
   `TXT:     "${txtRecord}"`,
 ]);
 const motdFooter = [
+  "Yes, this is a website in ip6.arpa—the namespace for IPv6 reverse DNS.",
+  "Use the terminal to explore its zone, DNS records, reverse names, and public allocation details.",
+  "",
   `AS208694: ${asPageUrl}`,
   `Legal notice: ${impressumUrl}`,
   `System administrator: ${motdContactEmail}`,
@@ -591,6 +595,15 @@ function appendBlock(text, className = "") {
 }
 
 function appendMotd(className = "") {
+  if (initialMotd && !initialMotd.isConnected) {
+    initialMotd.className = ["motd-output", className]
+      .filter(Boolean)
+      .join(" ");
+    terminal.append(initialMotd);
+    scrollTerminalToBottom();
+    return;
+  }
+
   const wrapper = document.createElement("div");
   wrapper.className = ["motd-output", className].filter(Boolean).join(" ");
 
@@ -720,6 +733,8 @@ document.addEventListener("keydown", (event) => {
 bootTerminal();
 
 async function bootTerminal() {
+  initialMotd?.remove();
+  terminal.replaceChildren();
   bootStartedAt = performance.now();
   isBooting = true;
   skipBootRequested = false;
@@ -735,7 +750,7 @@ async function bootTerminal() {
   if (skipBootRequested) {
     terminal.replaceChildren();
   } else {
-    await sleep(180);
+    await sleep(100);
     if (skipBootRequested) {
       terminal.replaceChildren();
     }
@@ -756,7 +771,7 @@ async function appendBootLine(text) {
 
   if (prefersReducedMotion || !text) {
     appendBlock(text, "output-muted boot-line");
-    await sleep(text ? 80 : 120);
+    await sleep(text ? 50 : 80);
     if (skipBootRequested) {
       terminal.replaceChildren();
     }
@@ -772,12 +787,12 @@ async function appendBootLine(text) {
 
     block.textContent += character;
     terminal.scrollTop = terminal.scrollHeight;
-    await sleep(8);
+    await sleep(4);
   }
 
   if (skipBootRequested) return;
 
-  await sleep(90);
+  await sleep(50);
   if (skipBootRequested) {
     terminal.replaceChildren();
   }

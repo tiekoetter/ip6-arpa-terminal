@@ -50,3 +50,19 @@ www.0.1.5.c.4.5.9.0.a.2.ip6.arpa. 3600 IN TXT "yes, this is a website in ip6.arp
 This site deliberately uses plain HTTP. Public CAs do not currently issue
 certificates for `.arpa` names that mainstream browsers trust. Unless you use a
 private trust setup, disable automatic HTTPS redirects for this virtual host.
+
+Serve only files that exist and return a real `404 Not Found` response for any
+other path. For an nginx-style configuration, the relevant behavior is:
+
+```nginx
+location / {
+    try_files $uri $uri/ =404;
+}
+
+error_page 404 /404.html;
+```
+
+This is important because serving `index.html` with `200 OK` for arbitrary
+paths creates duplicate URLs and soft-404 responses for crawlers. The included
+`robots.txt`, `sitemap.xml`, and `404.html` should be served with their normal
+file types and status codes.

@@ -5,9 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta
       name="description"
-      content="An interactive terminal hosted in the ip6.arpa reverse DNS zone."
+      content="An interactive terminal and website in ip6.arpa, the namespace used for IPv6 reverse DNS."
     >
-    <title>www.0.1.5.c.4.5.9.0.a.2.ip6.arpa</title>
+    <title>A website in ip6.arpa?</title>
+    <link
+      rel="canonical"
+      href="http://www.0.1.5.c.4.5.9.0.a.2.ip6.arpa/"
+    >
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="A website in ip6.arpa?">
+    <meta
+      property="og:description"
+      content="An interactive terminal and website in ip6.arpa, the namespace used for IPv6 reverse DNS."
+    >
+    <meta
+      property="og:url"
+      content="http://www.0.1.5.c.4.5.9.0.a.2.ip6.arpa/"
+    >
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="A website in ip6.arpa?">
+    <meta
+      name="twitter:description"
+      content="An interactive terminal and website in ip6.arpa, the namespace used for IPv6 reverse DNS."
+    >
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "A website in ip6.arpa?",
+        "description": "An interactive terminal and website in ip6.arpa, the namespace used for IPv6 reverse DNS.",
+        "url": "http://www.0.1.5.c.4.5.9.0.a.2.ip6.arpa/"
+      }
+    </script>
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="styles.css">
   </head>
@@ -15,13 +44,28 @@
     <main class="terminal-shell" aria-label="Reverse DNS terminal">
       <section class="terminal-window" aria-label="Fake terminal">
         <div id="terminal" class="terminal" role="log" aria-live="off">
+          <article id="initial-motd" class="motd-output output-success">
+            <h1 class="visually-hidden">A website in ip6.arpa?</h1>
+            <pre class="motd-box" aria-hidden="true">+-----------------------------------------------+
+|                 RDNS TERMINAL                 |
+|                                               |
+| Website: www.0.1.5.c.4.5.9.0.a.2.ip6.arpa     |
+| Zone:    0.1.5.c.4.5.9.0.a.2.ip6.arpa         |
+| TXT:     "yes, this is a website in ip6.arpa" |
++-----------------------------------------------+</pre>
+            <pre class="motd-footer">Yes, this is a website in ip6.arpa—the namespace for IPv6 reverse DNS.
+Use the terminal to explore its zone, DNS records, reverse names, and public allocation details.
+
+AS208694: <a href="https://as208694.net/" target="_blank" rel="noopener noreferrer">https://as208694.net/</a>
+Legal notice: <a href="https://www.tiekoetter.com/impressum/" target="_blank" rel="noopener noreferrer">https://www.tiekoetter.com/impressum/</a>
+System administrator: <a href="mailto:root@0.1.5.c.4.5.9.0.a.2.ip6.arpa">root@0.1.5.c.4.5.9.0.a.2.ip6.arpa</a>
+
+Type "help" for available commands.</pre>
+          </article>
+
           <noscript>
             <div class="noscript-message">
               <p>This interactive terminal requires JavaScript.</p>
-              <p>
-                <a href="https://www.as.tiekoetter.net/">AS208694 website</a><br>
-                <a href="https://www.tiekoetter.com/impressum/">Legal notice (Impressum)</a>
-              </p>
             </div>
           </noscript>
         </div>
