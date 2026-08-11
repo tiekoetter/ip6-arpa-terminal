@@ -11,6 +11,7 @@ const ipv6Prefix = `${ipv6PrefixAddress}/${ipv6PrefixNibbles.length * 4}`;
 const host = `www.${zone}`;
 const contactName = "Léon Tiekötter";
 const contactEmail = "leon@tiekoetter.com";
+const zoneContactEmail = `leon@${zone}`;
 const motdContactEmail = `root@${zone}`;
 const asPageUrl = "https://as208694.net/";
 const impressumUrl = "https://www.tiekoetter.com/impressum/";
@@ -18,6 +19,7 @@ const linkedTextTargets = new Map([
   [asPageUrl, asPageUrl],
   [impressumUrl, impressumUrl],
   [contactEmail, `mailto:${contactEmail}`],
+  [zoneContactEmail, `mailto:${zoneContactEmail}`],
   [motdContactEmail, `mailto:${motdContactEmail}`],
 ]);
 const linkedTextPattern = new RegExp(
@@ -122,6 +124,7 @@ const commands = {
       "  tls       Explain the HTTPS situation",
       "  https     Alias for tls",
       "  contact   Print contact details",
+      "  email     Show the zone's contact email and MX record",
       "  fetch     Show system information",
       "  host      Print the current hostname",
       "  ls        List this tiny filesystem",
@@ -278,6 +281,16 @@ const commands = {
       "Especially welcome: information about a public CA that issues",
       "browser-trusted certificates for .arpa names, including messages from",
       "the CA itself.",
+    ].join("\n");
+  },
+
+  email() {
+    return [
+      `Email: ${zoneContactEmail}`,
+      "",
+      "This address uses the ip6.arpa zone itself as its mail domain.",
+      "The zone also publishes an MX record directing email to:",
+      ...mxRecordLines.map((record) => `  ${record}`),
     ].join("\n");
   },
 

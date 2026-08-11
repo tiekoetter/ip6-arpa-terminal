@@ -14,6 +14,7 @@ following predefined commands:
 - `tls`
 - `https`
 - `contact`
+- `email`
 - `fetch`
 - `host`
 - `ls`
