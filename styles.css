@@ -244,14 +244,16 @@ body {
 
 @media (max-width: 640px) {
   .terminal-shell {
+    min-height: 0;
+    height: 100vh;
+    height: 100dvh;
+    place-items: stretch;
     padding: 0;
   }
 
   .terminal-window {
-    min-height: 100vh;
-    min-height: 100dvh;
-    height: 100vh;
-    height: 100dvh;
+    min-height: 0;
+    height: 100%;
     border: 0;
     border-radius: 0;
   }
