@@ -62,7 +62,9 @@ https://www.0.1.5.c.4.5.9.0.a.2.ip6arpa.com/
 
 The `goto http` and `goto https` commands switch between the canonical original
 site and this mirror. Both sites can serve the same static files; the terminal
-detects the active domain and updates its shell prompt accordingly.
+detects the active domain and updates its shell prompt accordingly. Command
+history is transferred between the two sites in a temporary URL fragment that
+is removed as soon as the destination loads.
 
 Serve only files that exist and return a real `404 Not Found` response for any
 other path. For an nginx-style configuration, the relevant behavior is:

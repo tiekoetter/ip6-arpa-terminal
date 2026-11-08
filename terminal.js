@@ -13,6 +13,9 @@ const host = `www.${zone}`;
 const httpsMirrorHost = `www.${httpsMirrorZone}`;
 const httpSiteUrl = `http://${host}/`;
 const httpsSiteUrl = `https://${httpsMirrorHost}/`;
+const historyTransferParameter = "terminal-history";
+const historyTransferEntryLimit = 50;
+const historyTransferLengthLimit = 4000;
 const browserHostname = window.location.hostname.toLowerCase().replace(/\.$/, "");
 const isHttpsMirror = [httpsMirrorZone, httpsMirrorHost].includes(browserHostname);
 const shellDomain = isHttpsMirror ? httpsMirrorZone : zone;
@@ -82,8 +85,8 @@ const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)
 
 prompt.textContent = `guest@${shellDomain}:~$`;
 
-const history = [];
-let historyIndex = 0;
+const history = restoreTransferredHistory();
+let historyIndex = history.length;
 let isBooting = false;
 let skipBootRequested = false;
 let bootStartedAt = performance.now();
@@ -98,7 +101,7 @@ const bootLines = [
   "",
 ];
 
-const motdBox = formatBox([
+const motdBoxContent = formatPanelContent([
   { text: "RDNS TERMINAL", align: "center" },
   "",
   `Website: ${siteHost}`,
@@ -115,9 +118,9 @@ const motdFooter = [
   "",
   'Type "help" for available commands.',
 ].join("\n");
-const motd = `${motdBox}\n\n${motdFooter}`;
+const motd = `${motdBoxContent}\n\n${motdFooter}`;
 
-initialMotd.querySelector(".motd-box").textContent = motdBox;
+initialMotd.querySelector(".motd-box").textContent = motdBoxContent;
 const initialMotdFooter = initialMotd.querySelector(".motd-footer");
 initialMotdFooter.replaceChildren();
 appendLinkedText(initialMotdFooter, motdFooter);
@@ -317,7 +320,7 @@ const commands = {
       return `goto: ${args[0]}: Unknown destination\nUsage: goto <http|https>`;
     }
 
-    window.location.assign(destination);
+    window.location.assign(createHistoryTransferUrl(destination));
     return `Connecting to ${destination}`;
   },
 
@@ -616,7 +619,7 @@ function formatFetchOutput() {
     .join("\n");
 }
 
-function formatBox(lines) {
+function formatPanelContent(lines) {
   const normalizedLines = lines.map((line) => {
     if (typeof line === "string") {
       return { text: line, align: "left" };
@@ -626,18 +629,15 @@ function formatBox(lines) {
   });
 
   const width = Math.max(...normalizedLines.map((line) => line.text.length));
-  const border = `+${"-".repeat(width + 2)}+`;
-  const body = normalizedLines.map(({ text, align }) => {
+  return normalizedLines.map(({ text, align }) => {
     if (align !== "center") {
-      return `| ${text.padEnd(width, " ")} |`;
+      return text.padEnd(width, " ");
     }
 
     const leftPadding = Math.floor((width - text.length) / 2);
     const rightPadding = width - text.length - leftPadding;
-    return `| ${" ".repeat(leftPadding)}${text}${" ".repeat(rightPadding)} |`;
-  });
-
-  return [border, ...body, border].join("\n");
+    return `${" ".repeat(leftPadding)}${text}${" ".repeat(rightPadding)}`;
+  }).join("\n");
 }
 
 function appendBlock(text, className = "") {
@@ -671,7 +671,7 @@ function appendMotd(className = "") {
 
   const box = document.createElement("pre");
   box.className = "motd-box";
-  box.textContent = motdBox;
+  box.textContent = motdBoxContent;
 
   const footer = document.createElement("pre");
   footer.className = "motd-footer";
@@ -706,6 +706,49 @@ function scrollTerminalToBottom() {
 
 function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function createHistoryTransferUrl(destination) {
+  const destinationUrl = new URL(destination);
+  const fragment = new URLSearchParams(destinationUrl.hash.slice(1));
+  let transferredHistory = history.slice(-historyTransferEntryLimit);
+
+  while (
+    transferredHistory.length > 1 &&
+    encodeURIComponent(JSON.stringify(transferredHistory)).length >
+      historyTransferLengthLimit
+  ) {
+    transferredHistory.shift();
+  }
+
+  fragment.set(historyTransferParameter, JSON.stringify(transferredHistory));
+  destinationUrl.hash = fragment.toString();
+  return destinationUrl.href;
+}
+
+function restoreTransferredHistory() {
+  const fragment = new URLSearchParams(window.location.hash.slice(1));
+  const serializedHistory = fragment.get(historyTransferParameter);
+  if (serializedHistory === null) return [];
+
+  fragment.delete(historyTransferParameter);
+  const cleanUrl = new URL(window.location.href);
+  cleanUrl.hash = fragment.toString();
+  window.history.replaceState(null, "", cleanUrl);
+
+  try {
+    const restoredHistory = JSON.parse(serializedHistory);
+    if (
+      !Array.isArray(restoredHistory) ||
+      restoredHistory.some((command) => typeof command !== "string")
+    ) {
+      return [];
+    }
+
+    return restoredHistory.slice(-historyTransferEntryLimit);
+  } catch {
+    return [];
+  }
 }
 
 function appendPrompt(command) {
@@ -804,21 +847,30 @@ async function bootTerminal() {
   form.classList.add("is-booting");
   input.disabled = true;
 
+  const bootOutput = document.createElement("div");
+  bootOutput.className = "boot-output";
+  terminal.append(bootOutput);
+
   for (const line of bootLines) {
     if (skipBootRequested) break;
-    await appendBootLine(line);
+    await appendBootLine(line, bootOutput);
   }
 
-  if (skipBootRequested) {
-    terminal.replaceChildren();
-  } else {
-    await sleep(100);
-    if (skipBootRequested) {
-      terminal.replaceChildren();
-    }
+  if (!skipBootRequested) {
+    await sleep(120);
   }
 
-  appendBlock(motd, "output-success");
+  if (!skipBootRequested && !prefersReducedMotion) {
+    bootOutput.classList.add("is-exiting");
+    await sleep(180);
+  }
+
+  const animateMotd = !skipBootRequested && !prefersReducedMotion;
+  terminal.replaceChildren();
+  appendBlock(
+    motd,
+    animateMotd ? "output-success motd-enter" : "output-success",
+  );
 
   isBooting = false;
   terminal.setAttribute("aria-live", "polite");
@@ -828,21 +880,24 @@ async function bootTerminal() {
   updateCursor();
 }
 
-async function appendBootLine(text) {
+async function appendBootLine(text, output) {
   if (skipBootRequested) return;
 
-  if (prefersReducedMotion || !text) {
-    appendBlock(text, "output-muted boot-line");
-    await sleep(text ? 50 : 80);
-    if (skipBootRequested) {
-      terminal.replaceChildren();
-    }
+  if (!text) {
+    await sleep(80);
     return;
   }
 
   const block = document.createElement("pre");
   block.className = "output-muted boot-line";
-  terminal.append(block);
+  output.append(block);
+
+  if (prefersReducedMotion) {
+    block.textContent = text;
+    scrollTerminalToBottom();
+    await sleep(50);
+    return;
+  }
 
   for (const character of text) {
     if (skipBootRequested) return;
@@ -855,9 +910,6 @@ async function appendBootLine(text) {
   if (skipBootRequested) return;
 
   await sleep(50);
-  if (skipBootRequested) {
-    terminal.replaceChildren();
-  }
 }
 
 function sleep(milliseconds) {
