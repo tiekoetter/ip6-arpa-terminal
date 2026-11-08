@@ -1,6 +1,7 @@
 document.documentElement.classList.replace("no-js", "js");
 
 const zone = "0.1.5.c.4.5.9.0.a.2.ip6.arpa";
+const httpsMirrorZone = "0.1.5.c.4.5.9.0.a.2.ip6arpa.com";
 const ipv6PrefixNibbles = [
   ...zone.slice(0, -".ip6.arpa".length).split("."),
 ].reverse();
@@ -9,6 +10,14 @@ const ipv6PrefixAddress = formatIpv6Address(
 );
 const ipv6Prefix = `${ipv6PrefixAddress}/${ipv6PrefixNibbles.length * 4}`;
 const host = `www.${zone}`;
+const httpsMirrorHost = `www.${httpsMirrorZone}`;
+const httpSiteUrl = `http://${host}/`;
+const httpsSiteUrl = `https://${httpsMirrorHost}/`;
+const browserHostname = window.location.hostname.toLowerCase().replace(/\.$/, "");
+const isHttpsMirror = [httpsMirrorZone, httpsMirrorHost].includes(browserHostname);
+const shellDomain = isHttpsMirror ? httpsMirrorZone : zone;
+const siteHost = isHttpsMirror ? httpsMirrorHost : host;
+const siteProtocol = isHttpsMirror ? "HTTPS" : "HTTP";
 const contactName = "Léon Tiekötter";
 const contactEmail = "leon@tiekoetter.com";
 const zoneContactEmail = `leon@${zone}`;
@@ -16,6 +25,8 @@ const motdContactEmail = `root@${zone}`;
 const asPageUrl = "https://as208694.net/";
 const impressumUrl = "https://www.tiekoetter.com/impressum/";
 const linkedTextTargets = new Map([
+  [httpSiteUrl, httpSiteUrl],
+  [httpsSiteUrl, httpsSiteUrl],
   [asPageUrl, asPageUrl],
   [impressumUrl, impressumUrl],
   [contactEmail, `mailto:${contactEmail}`],
@@ -62,11 +73,14 @@ const soaRecord = {
 const terminal = document.querySelector("#terminal");
 const initialMotd = document.querySelector("#initial-motd");
 const form = document.querySelector("#command-form");
+const prompt = document.querySelector(".prompt");
 const input = document.querySelector("#command-input");
 const cursor = document.querySelector("#block-cursor");
 const cursorCanvas = document.createElement("canvas");
 const cursorContext = cursorCanvas.getContext("2d");
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+prompt.textContent = `guest@${shellDomain}:~$`;
 
 const history = [];
 let historyIndex = 0;
@@ -75,19 +89,19 @@ let skipBootRequested = false;
 let bootStartedAt = performance.now();
 
 const bootLines = [
-  `querying ${host}`,
+  `querying ${siteHost}`,
   `A record found:    ${aRecords.join(", ")}`,
   `AAAA records found: ${aaaaRecords.join(", ")}`,
-  "HTTP endpoint reachable ............ ok",
+  `${siteProtocol} endpoint reachable ........... ok`,
   "loading terminal interface ......... ok",
-  `connected as guest@${zone}`,
+  `connected as guest@${shellDomain}`,
   "",
 ];
 
 const motdBox = formatBox([
   { text: "RDNS TERMINAL", align: "center" },
   "",
-  `Website: ${host}`,
+  `Website: ${siteHost}`,
   `Zone:    ${zone}`,
   `TXT:     "${txtRecord}"`,
 ]);
@@ -102,6 +116,11 @@ const motdFooter = [
   'Type "help" for available commands.',
 ].join("\n");
 const motd = `${motdBox}\n\n${motdFooter}`;
+
+initialMotd.querySelector(".motd-box").textContent = motdBox;
+const initialMotdFooter = initialMotd.querySelector(".motd-footer");
+initialMotdFooter.replaceChildren();
+appendLinkedText(initialMotdFooter, motdFooter);
 
 const fileContents = {
   "motd.txt": () => motd,
@@ -123,6 +142,8 @@ const commands = {
       "  arpa ADDR Convert an IP address to its reverse DNS name",
       "  tls       Explain the HTTPS situation",
       "  https     Alias for tls",
+      "  goto http Switch to the canonical HTTP site",
+      "  goto https Switch to the canonical HTTPS mirror",
       "  contact   Print contact details",
       "  email     Show the zone's contact email and MX record",
       "  fetch     Show system information",
@@ -259,10 +280,15 @@ const commands = {
 
   tls() {
     return [
-      "This host deliberately uses plain HTTP.",
+      "The original ip6.arpa host deliberately uses plain HTTP.",
       "",
       "Public CAs do not currently issue certificates for .arpa names that",
       "mainstream browsers trust.",
+      "",
+      "A browser-trusted HTTPS mirror is available at:",
+      `  ${httpsSiteUrl}`,
+      "",
+      'Use "goto https" for the mirror or "goto http" for the original.',
       "",
       `If you know of a CA that does, or represent one, email ${contactEmail}.`,
     ].join("\n");
@@ -270,6 +296,29 @@ const commands = {
 
   https() {
     return commands.tls();
+  },
+
+  goto(args) {
+    if (!args.length) {
+      return "goto: missing destination\nUsage: goto <http|https>";
+    }
+
+    if (args.length > 1) {
+      return "goto: too many arguments\nUsage: goto <http|https>";
+    }
+
+    const destinations = {
+      http: httpSiteUrl,
+      https: httpsSiteUrl,
+    };
+    const destination = destinations[args[0].toLowerCase()];
+
+    if (!destination) {
+      return `goto: ${args[0]}: Unknown destination\nUsage: goto <http|https>`;
+    }
+
+    window.location.assign(destination);
+    return `Connecting to ${destination}`;
   },
 
   contact() {
@@ -299,7 +348,7 @@ const commands = {
   },
 
   host() {
-    return host;
+    return siteHost;
   },
 
   ls() {
@@ -323,7 +372,7 @@ const commands = {
   },
 
   pwd() {
-    return `/srv/www/${host}`;
+    return `/srv/www/${siteHost}`;
   },
 
   whoami() {
@@ -538,11 +587,11 @@ function formatDuration(milliseconds) {
 }
 
 function formatFetchOutput() {
-  const title = `guest@${zone}`;
+  const title = `guest@${shellDomain}`;
   const details = [
     title,
     "-".repeat(title.length),
-    `Host:     ${host}`,
+    `Host:     ${siteHost}`,
     `Zone:     ${zone}`,
     `Prefix:   ${ipv6Prefix}`,
     "ASN:      208694",
@@ -660,7 +709,7 @@ function escapeRegExp(text) {
 }
 
 function appendPrompt(command) {
-  appendBlock(`guest@${zone}:~$ ${command}`, "output-command");
+  appendBlock(`guest@${shellDomain}:~$ ${command}`, "output-command");
 }
 
 function runCommand(rawCommand) {

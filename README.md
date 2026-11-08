@@ -13,6 +13,8 @@ following predefined commands:
 - `arpa ADDR`
 - `tls`
 - `https`
+- `goto http`
+- `goto https`
 - `contact`
 - `email`
 - `fetch`
@@ -51,6 +53,16 @@ www.0.1.5.c.4.5.9.0.a.2.ip6.arpa. 3600 IN TXT "yes, this is a website in ip6.arp
 This site deliberately uses plain HTTP. Public CAs do not currently issue
 certificates for `.arpa` names that mainstream browsers trust. Unless you use a
 private trust setup, disable automatic HTTPS redirects for this virtual host.
+
+The canonical HTTPS mirror is available at:
+
+```text
+https://www.0.1.5.c.4.5.9.0.a.2.ip6arpa.com/
+```
+
+The `goto http` and `goto https` commands switch between the canonical original
+site and this mirror. Both sites can serve the same static files; the terminal
+detects the active domain and updates its shell prompt accordingly.
 
 Serve only files that exist and return a real `404 Not Found` response for any
 other path. For an nginx-style configuration, the relevant behavior is:
